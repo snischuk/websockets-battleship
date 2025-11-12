@@ -1,22 +1,34 @@
-import { defineConfig } from "eslint/config";
+const tsParser = require('@typescript-eslint/parser');
+const tsPlugin = require('@typescript-eslint/eslint-plugin');
+const prettierPlugin = require('eslint-plugin-prettier');
 
-export default defineConfig([
+module.exports = [
   {
-    root: true,
-    files: ["**/*.ts"],
-    parser: "@typescript-eslint/parser",
-    parserOptions: {
-      ecmaVersion: 2022,
-      sourceType: "module",
+    files: ['**/*.ts'],
+
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        project: './tsconfig.json',
+        ecmaVersion: 2022,
+        sourceType: 'module',
+      },
     },
-    plugins: ["@typescript-eslint"],
-    extends: ["plugin:@typescript-eslint/recommended"],
-    env: {
-      node: true,
+
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+      prettier: prettierPlugin,
     },
+
     rules: {
-      "@typescript-eslint/no-unused-vars": "warn",
-      "@typescript-eslint/explicit-module-boundary-types": "off",
+      ...tsPlugin.configs.recommended.rules,
+      '@typescript-eslint/explicit-module-boundary-types': 'off',
+      '@typescript-eslint/no-unused-vars': 'warn',
+      'prettier/prettier': 'error',
+    },
+
+    linterOptions: {
+      reportUnusedDisableDirectives: 'warn',
     },
   },
-]);
+];
