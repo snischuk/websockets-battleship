@@ -38,6 +38,7 @@
     "webpack-node-externals": "^3.0.0"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
     "ws": "^8.8.0"
   }
 }
