@@ -1,9 +1,14 @@
 import { config } from 'dotenv';
-config();
+config({ quiet: true });
 
 import { httpServer } from './http_server/index';
+import { wsServer } from './ws_server/index';
 
 const PORT = process.env.PORT || 3000;
 
-console.log(`Start static http server on the ${PORT} port!`);
-httpServer.listen(PORT);
+httpServer.listen(PORT, () => {
+  console.log(`HTTP server started on port ${PORT}`);
+  console.log(
+    `WS server started on the same port. Connected clients: ${wsServer.clients.size}`,
+  );
+});
