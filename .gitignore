@@ -1,16 +1,16 @@
-# dependencies
-/node_modules
-
-# System Files
-.DS_Store
-Thumbs.db
-[Dd]esktop.ini
-
-# Links
-*.lnk
-.idea/
-*.PEM
-.vscode/
+# Node dependencies
+node_modules/
 
 # Logs
-npm-debug.log
+logs/
+*.log
+
+# Build output
+dist/
+build/
+
+# Environment variables
+.env
+
+# TypeScript cache
+*.tsbuildinfo
