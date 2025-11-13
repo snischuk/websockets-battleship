@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 import type { RawData } from 'ws';
 
-export const rawDataToString = (raw: RawData): string => {
+export const convertRawDataToString = (raw: RawData): string => {
   switch (true) {
     case typeof raw === 'string':
       return raw;

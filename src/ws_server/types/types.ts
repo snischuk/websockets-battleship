@@ -67,7 +67,7 @@ export type WSRequest =
   | RandomAttackRequest;
 
 // ---------------- Base Message ----------------
-export interface BaseMessage<T = unknown> {
+export interface BaseRequest<T = unknown> {
   type: string;
   data: T;
   id: WSMessageId;

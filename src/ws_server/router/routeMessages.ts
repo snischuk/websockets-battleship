@@ -1,4 +1,6 @@
+import type { WebSocket } from 'ws';
 import * as Types from '../types/types';
+import { WSPlayerAdapter } from '../adapters/wsPlayerAdapter';
 
 export const ActionByType = {
   REG: 'reg',
@@ -11,12 +13,12 @@ export const ActionByType = {
 
 export type ActionByType = (typeof ActionByType)[keyof typeof ActionByType];
 
-const isRegRequestData = (data: unknown): data is Types.RegRequestData => {
-  if (typeof data !== 'object' || data === null) return false;
+// const isRegRequestData = (data: unknown): data is Types.RegRequestData => {
+//   if (typeof data !== 'object' || data === null) return false;
 
-  const d = data as Record<string, unknown>;
-  return typeof d['name'] === 'string' && typeof d['password'] === 'string';
-};
+//   const d = data as Record<string, unknown>;
+//   return typeof d['name'] === 'string' && typeof d['password'] === 'string';
+// };
 
 const isCreateRoomData = (
   data: unknown,
@@ -50,21 +52,22 @@ const isRandomAttackData = (
   'gameId' in data &&
   'indexPlayer' in data;
 
-export const routeMessagesByActionType = (msg: Types.BaseMessage<unknown>) => {
+export const routeMessagesByActionType = (
+  msg: Types.BaseRequest<unknown>,
+  ws: WebSocket,
+) => {
+  const wsPlayerAdapter = new WSPlayerAdapter(ws);
+
   switch (msg.type) {
     case ActionByType.REG:
-      if (isRegRequestData(msg.data)) {
-        const typedMsg: Types.BaseMessage<Types.RegRequestData> = {
-          ...msg,
-          data: msg.data,
-        };
-        handleReg(typedMsg);
-      }
+      wsPlayerAdapter.handleRegistration(
+        msg as Types.BaseRequest<Types.RegRequestData>,
+      );
       break;
 
     case ActionByType.CREATE_ROOM:
       if (isCreateRoomData(msg.data)) {
-        const typedMsg: Types.BaseMessage<Types.CreateRoomRequest['data']> = {
+        const typedMsg: Types.BaseRequest<Types.CreateRoomRequest['data']> = {
           ...msg,
           data: msg.data,
         };
@@ -74,7 +77,7 @@ export const routeMessagesByActionType = (msg: Types.BaseMessage<unknown>) => {
 
     case ActionByType.ADD_USER_TO_ROOM:
       if (isAddUserToRoomData(msg.data)) {
-        const typedMsg: Types.BaseMessage<Types.AddUserToRoomRequest['data']> =
+        const typedMsg: Types.BaseRequest<Types.AddUserToRoomRequest['data']> =
           { ...msg, data: msg.data };
         handleAddUserToRoom(typedMsg);
       }
@@ -82,7 +85,7 @@ export const routeMessagesByActionType = (msg: Types.BaseMessage<unknown>) => {
 
     case ActionByType.ADD_SHIPS:
       if (isAddShipsData(msg.data)) {
-        const typedMsg: Types.BaseMessage<Types.AddShipsRequest['data']> = {
+        const typedMsg: Types.BaseRequest<Types.AddShipsRequest['data']> = {
           ...msg,
           data: msg.data,
         };
@@ -92,7 +95,7 @@ export const routeMessagesByActionType = (msg: Types.BaseMessage<unknown>) => {
 
     case ActionByType.ATTACK:
       if (isAttackData(msg.data)) {
-        const typedMsg: Types.BaseMessage<Types.AttackRequest['data']> = {
+        const typedMsg: Types.BaseRequest<Types.AttackRequest['data']> = {
           ...msg,
           data: msg.data,
         };
@@ -102,7 +105,7 @@ export const routeMessagesByActionType = (msg: Types.BaseMessage<unknown>) => {
 
     case ActionByType.RANDOM_ATTACK:
       if (isRandomAttackData(msg.data)) {
-        const typedMsg: Types.BaseMessage<Types.RandomAttackRequest['data']> = {
+        const typedMsg: Types.BaseRequest<Types.RandomAttackRequest['data']> = {
           ...msg,
           data: msg.data,
         };
@@ -115,34 +118,34 @@ export const routeMessagesByActionType = (msg: Types.BaseMessage<unknown>) => {
   }
 };
 
-const handleReg = (msg: Types.BaseMessage<Types.RegRequestData>) => {
-  console.log('👤 Handling registration:', msg.data);
-};
+// const handleReg = (msg: Types.BaseRequest<Types.RegRequestData>) => {
+//   console.log('👤 Handling registration:', msg.data);
+// };
 
 const handleCreateRoom = (
-  msg: Types.BaseMessage<Types.CreateRoomRequest['data']>,
+  msg: Types.BaseRequest<Types.CreateRoomRequest['data']>,
 ) => {
   console.log('🏠 Handling create room:', msg.data);
 };
 
 const handleAddUserToRoom = (
-  msg: Types.BaseMessage<Types.AddUserToRoomRequest['data']>,
+  msg: Types.BaseRequest<Types.AddUserToRoomRequest['data']>,
 ) => {
   console.log('➕ Handling add user to room:', msg.data);
 };
 
 const handleAddShips = (
-  msg: Types.BaseMessage<Types.AddShipsRequest['data']>,
+  msg: Types.BaseRequest<Types.AddShipsRequest['data']>,
 ) => {
   console.log('🚢 Handling add ships:', msg.data);
 };
 
-const handleAttack = (msg: Types.BaseMessage<Types.AttackRequest['data']>) => {
+const handleAttack = (msg: Types.BaseRequest<Types.AttackRequest['data']>) => {
   console.log('💥 Handling attack:', msg.data);
 };
 
 const handleRandomAttack = (
-  msg: Types.BaseMessage<Types.RandomAttackRequest['data']>,
+  msg: Types.BaseRequest<Types.RandomAttackRequest['data']>,
 ) => {
   console.log('🎲 Handling random attack:', msg.data);
 };

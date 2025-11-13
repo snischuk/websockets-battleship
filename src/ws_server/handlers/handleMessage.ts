@@ -1,25 +1,21 @@
 import type { RawData } from 'ws';
-import { rawDataToString } from '../helpers/helpers';
-import * as Types from '../types/types';
+// import type WebSocket from 'ws';
+import type { WebSocket } from 'ws';
+
+import type { BaseRequest } from '../types/types';
 import { routeMessagesByActionType } from '../router/routeMessages';
+import { parseMessage } from '../helpers/parseJSONString';
 
 export const handleMessage = <T = unknown>(
   wsRawMessage: RawData,
-): Types.BaseMessage<T> | undefined => {
-  const messageJSON = rawDataToString(wsRawMessage);
+  socket: WebSocket,
+): BaseRequest<T> | undefined => {
+  const parsedMessage = parseMessage<T>(wsRawMessage);
+  if (!parsedMessage) return undefined;
 
-  try {
-    const parsedMessage: Types.BaseMessage<T> = JSON.parse(messageJSON);
+  console.log('⬅️ Received command:', parsedMessage);
 
-    if (typeof parsedMessage.data === 'string') {
-      parsedMessage.data = JSON.parse(parsedMessage.data);
-    }
+  routeMessagesByActionType(parsedMessage, socket);
 
-    console.log('📩 Parsed message:', parsedMessage);
-
-    routeMessagesByActionType(parsedMessage);
-  } catch (err) {
-    console.error('⚠️ Failed to parse message JSON:', err);
-    return undefined;
-  }
+  return parsedMessage;
 };

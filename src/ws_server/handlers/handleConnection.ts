@@ -1,5 +1,8 @@
 import type { IncomingMessage } from 'node:http';
-import type { WebSocket, WebSocketServer } from 'ws';
+import type { WebSocketServer } from 'ws';
+// import type WebSocket from 'ws';
+import type { WebSocket } from 'ws';
+
 import { handleClose } from './handleClose';
 import { handleMessage } from './handleMessage';
 
@@ -14,6 +17,6 @@ export const handleConnection = (
   console.log(`🟢 New client connected: ${clientIP}:${clientPort}`);
   console.log(`Total connected clients: ${wsServer.clients.size}`);
 
-  socket.on('message', (message) => handleMessage(message));
+  socket.on('message', (message) => handleMessage(message, socket));
   socket.on('close', () => handleClose(clientIP, clientPort, wsServer));
 };
