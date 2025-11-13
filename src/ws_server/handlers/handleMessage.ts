@@ -1,6 +1,7 @@
 import type { RawData } from 'ws';
 import { rawDataToString } from '../helpers/helpers';
 import * as Types from '../types/types';
+import { routeMessagesByActionType } from '../router/routeMessages';
 
 export const handleMessage = <T = unknown>(
   wsRawMessage: RawData,
@@ -16,7 +17,7 @@ export const handleMessage = <T = unknown>(
 
     console.log('📩 Parsed message:', parsedMessage);
 
-    return parsedMessage;
+    routeMessagesByActionType(parsedMessage);
   } catch (err) {
     console.error('⚠️ Failed to parse message JSON:', err);
     return undefined;
