@@ -1,16 +1,13 @@
-import type { RawData } from 'ws';
-// import type WebSocket from 'ws';
-import type { WebSocket } from 'ws';
-
-import type { BaseRequest } from '../types/types';
+import type { RawData, WebSocket } from 'ws';
+import type { WSRequest } from '../types/types';
 import { routeMessagesByActionType } from '../router/routeMessages';
 import { parseMessage } from '../helpers/parseJSONString';
 
-export const handleMessage = <T = unknown>(
+export const handleMessage = (
   wsRawMessage: RawData,
   socket: WebSocket,
-): BaseRequest<T> | undefined => {
-  const parsedMessage = parseMessage<T>(wsRawMessage);
+): WSRequest | undefined => {
+  const parsedMessage = parseMessage(wsRawMessage);
   if (!parsedMessage) return undefined;
 
   console.log('⬅️ Received command:', parsedMessage);

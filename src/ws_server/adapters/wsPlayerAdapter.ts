@@ -1,9 +1,10 @@
 import type { WebSocket } from 'ws';
-import type { BaseRequest } from '../types/types';
 import { PlayerController } from '../../game/controllers/playerController';
 import { PlayerModel } from '../../game/models/playerModel';
 import { RoomController } from '../../game/controllers/roomController';
-import { isRegRequestData } from '../helpers/validators';
+import { isRegRequestData } from '../helpers/schemaValidator';
+import { RegRequest } from '../types/types';
+import { ActionByType } from '../constants/constants';
 
 export class WSPlayerAdapter {
   private ws: WebSocket;
@@ -12,11 +13,11 @@ export class WSPlayerAdapter {
     this.ws = ws;
   }
 
-  async handleRegistration(msg: BaseRequest<unknown>) {
+  async handleRegistration(msg: RegRequest) {
     console.log('🟢 handleRegistration msg:', msg);
 
     if (!isRegRequestData(msg.data)) {
-      this.sendError('reg', 'Invalid registration data', msg.id);
+      this.sendError(ActionByType.REG, 'Invalid registration data', msg.id);
       return;
     }
 
@@ -28,12 +29,11 @@ export class WSPlayerAdapter {
 
       this.broadcastUpdateRoom();
 
-      // ответ клиенту
       this.sendRegistrationSuccess(player, msg.id);
     } catch (err: unknown) {
       console.error('❌ handleRegistration error:', err);
       this.sendError(
-        'reg',
+        ActionByType.REG,
         err instanceof Error ? err.message : 'Unknown error',
         msg.id,
       );
@@ -41,7 +41,7 @@ export class WSPlayerAdapter {
   }
   private sendRegistrationSuccess(player: PlayerModel, id: number) {
     const response = {
-      type: 'reg',
+      type: ActionByType.REG,
       data: JSON.stringify({
         name: player.name,
         index: player.id,
@@ -77,7 +77,7 @@ export class WSPlayerAdapter {
 
     RoomController.roomService.getAllWS().forEach((ws) => {
       const response = {
-        type: 'update_room',
+        type: ActionByType.UPDATE_ROOM,
         data: JSON.stringify(rooms),
         id: 0,
       };
