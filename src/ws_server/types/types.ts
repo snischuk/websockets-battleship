@@ -1,82 +1,19 @@
-// ---------------- Player ----------------
+import { ActionByType } from '../constants/constants';
+
 export type WSMessageId = 0;
 
-// ---------------- Requests ----------------
+// ---------------- Player ----------------
 export type RegRequestData = {
   name: string;
   password: string;
 };
 
 export type RegRequest = {
-  type: 'reg';
+  type: typeof ActionByType.REG;
   data: RegRequestData;
   id: WSMessageId;
 };
 
-// ---------------- Room ----------------
-export type CreateRoomRequest = {
-  type: 'create_room';
-  data: '';
-  id: WSMessageId;
-};
-
-export type AddUserToRoomRequest = {
-  type: 'add_user_to_room';
-  data: { indexRoom: number | string };
-  id: WSMessageId;
-};
-
-// ---------------- Ships ----------------
-export type AddShipsRequest = {
-  type: 'add_ships';
-  data: {
-    gameId: number | string;
-    ships: unknown[]; // Ship[]
-    indexPlayer: number | string;
-  };
-  id: WSMessageId;
-};
-
-// ---------------- Game ----------------
-export type AttackRequest = {
-  type: 'attack';
-  data: {
-    gameId: number | string;
-    x: number;
-    y: number;
-    indexPlayer: number | string;
-  };
-  id: WSMessageId;
-};
-
-export type RandomAttackRequest = {
-  type: 'randomAttack';
-  data: {
-    gameId: number | string;
-    indexPlayer: number | string;
-  };
-  id: WSMessageId;
-};
-
-// ---------------- Union Request ----------------
-export type WSRequest =
-  | RegRequest
-  | CreateRoomRequest
-  | AddUserToRoomRequest
-  | AddShipsRequest
-  | AttackRequest
-  | RandomAttackRequest;
-
-// ---------------- Base Request ----------------
-export interface BaseRequest<T = unknown> {
-  type: string;
-  data: T;
-  id: WSMessageId;
-}
-
-// ---------------- Responses ----------------
-
-// -------- Player Response --------
 export type RegResponseData = {
   name: string | null;
   index: number | string | null;
@@ -85,15 +22,29 @@ export type RegResponseData = {
 };
 
 export type RegResponse = {
-  type: 'reg';
+  type: typeof ActionByType.REG;
   data: RegResponseData;
   id: WSMessageId;
 };
 
-// -------- Room Response --------
-export type RoomUser = {
+export type PlayerScore = {
   name: string;
-  index: number | string;
+  wins: number;
+};
+
+export type UpdateWinnersResponse = {
+  type: typeof ActionByType.UPDATE_WINNERS;
+  data: PlayerScore[];
+  id: WSMessageId;
+};
+
+// ---------------- Room ----------------
+export type RoomUser = { name: string; index: number | string };
+
+export type CreateRoomRequest = {
+  type: typeof ActionByType.CREATE_ROOM;
+  data: '';
+  id: WSMessageId;
 };
 
 export type CreateRoomResponseData = {
@@ -104,8 +55,15 @@ export type CreateRoomResponseData = {
 };
 
 export type CreateRoomResponse = {
-  type: 'create_room';
+  type: typeof ActionByType.CREATE_ROOM;
   data: CreateRoomResponseData;
+  id: WSMessageId;
+};
+
+export type AddUserToRoomRequestData = { indexRoom: number | string };
+export type AddUserToRoomRequest = {
+  type: typeof ActionByType.ADD_USER_TO_ROOM;
+  data: AddUserToRoomRequestData;
   id: WSMessageId;
 };
 
@@ -117,98 +75,138 @@ export type AddUserToRoomResponseData = {
 };
 
 export type AddUserToRoomResponse = {
-  type: 'add_user_to_room';
+  type: typeof ActionByType.ADD_USER_TO_ROOM;
   data: AddUserToRoomResponseData;
   id: WSMessageId;
 };
 
-// -------- Ships Response --------
-export type Ship = {
-  position: { x: number; y: number };
-  isHorizontal: boolean;
-  length: number;
-  type: 'small' | 'medium' | 'large' | 'huge';
-  hits?: number;
-  isSunk?: boolean;
+export type CreateGameResponseData = {
+  idGame: number | string;
+  idPlayer: number | string;
 };
-
-export type StartGameResponse = {
-  type: 'start_game';
-  data: {
-    ships: Ship[];
-    currentPlayerIndex: number | string;
-  };
+export type CreateGameResponse = {
+  type: typeof ActionByType.CREATE_GAME;
+  data: CreateGameResponseData;
   id: WSMessageId;
 };
 
-// -------- Game Response --------
+export type UpdateRoomResponseData = {
+  roomId: number | string;
+  roomUsers: RoomUser[];
+};
+export type UpdateRoomResponse = {
+  type: typeof ActionByType.UPDATE_ROOM;
+  data: UpdateRoomResponseData[];
+  id: WSMessageId;
+};
+
+// ---------------- Ships ----------------
+export type ShipType = 'small' | 'medium' | 'large' | 'huge';
+
+export type ShipPosition = { x: number; y: number };
+
+export type Ship = {
+  position: ShipPosition;
+  direction: boolean;
+  length: number;
+  type: ShipType;
+};
+
+export type AddShipsRequestData = {
+  gameId: number | string;
+  ships: Ship[];
+  indexPlayer: number | string;
+};
+export type AddShipsRequest = {
+  type: typeof ActionByType.ADD_SHIPS;
+  data: AddShipsRequestData;
+  id: WSMessageId;
+};
+
+export type StartGameResponseData = {
+  ships: Ship[];
+  currentPlayerIndex: number | string;
+};
+export type StartGameResponse = {
+  type: typeof ActionByType.START_GAME;
+  data: StartGameResponseData;
+  id: WSMessageId;
+};
+
+// ---------------- Game ----------------
+export type AttackRequestData = {
+  gameId: number | string;
+  x: number;
+  y: number;
+  indexPlayer: number | string;
+};
+export type AttackRequest = {
+  type: typeof ActionByType.ATTACK;
+  data: AttackRequestData;
+  id: WSMessageId;
+};
+
 export type AttackStatus = 'miss' | 'shot' | 'killed';
 
+export type AttackResponseData = {
+  position: ShipPosition;
+  currentPlayer: number | string;
+  status: AttackStatus;
+};
 export type AttackResponse = {
-  type: 'attack';
-  data: {
-    position: { x: number; y: number };
-    currentPlayer: number | string;
-    status: AttackStatus;
-  };
+  type: typeof ActionByType.ATTACK;
+  data: AttackResponseData;
   id: WSMessageId;
 };
 
-export type RandomAttackResponse = AttackResponse;
+export type RandomAttackRequestData = {
+  gameId: number | string;
+  indexPlayer: number | string;
+};
+export type RandomAttackRequest = {
+  type: typeof ActionByType.RANDOM_ATTACK;
+  data: RandomAttackRequestData;
+  id: WSMessageId;
+};
 
+export type RandomAttackResponse = {
+  type: typeof ActionByType.RANDOM_ATTACK;
+  data: AttackResponseData;
+  id: WSMessageId;
+};
+
+export type TurnResponseData = { currentPlayer: number | string };
 export type TurnResponse = {
-  type: 'turn';
-  data: {
-    currentPlayer: number | string;
-  };
+  type: typeof ActionByType.TURN;
+  data: TurnResponseData;
   id: WSMessageId;
 };
 
+export type FinishResponseData = { winPlayer: number | string };
 export type FinishResponse = {
-  type: 'finish';
-  data: {
-    winPlayer: number | string;
-  };
+  type: typeof ActionByType.FINISH;
+  data: FinishResponseData;
   id: WSMessageId;
 };
 
-// -------- Updates for all --------
-export type PlayerScore = {
-  name: string;
-  points: number;
-};
+// ---------------- Union Types ----------------
+export type WSRequest =
+  | RegRequest
+  | CreateRoomRequest
+  | AddUserToRoomRequest
+  | AddShipsRequest
+  | AttackRequest
+  | RandomAttackRequest;
 
-export type UpdateWinnersResponse = {
-  type: 'update_winners';
-  data: PlayerScore[];
-  id: WSMessageId;
-};
-
-export type UpdateRoomResponse = {
-  type: 'update_room';
-  data: {
-    roomId: number | string;
-    roomUsers: RoomUser[];
-  }[];
-  id: WSMessageId;
-};
-
-// ---------------- Union Response ----------------
 export type WSResponse =
   | RegResponse
+  | UpdateWinnersResponse
   | CreateRoomResponse
   | AddUserToRoomResponse
+  | CreateGameResponse
+  | UpdateRoomResponse
   | StartGameResponse
   | AttackResponse
   | RandomAttackResponse
   | TurnResponse
-  | FinishResponse
-  | UpdateWinnersResponse
-  | UpdateRoomResponse;
-
-// ---------------- Base Response ----------------
-export interface BaseResponse<T = unknown> {
-  type: string;
-  data: T;
-  id: WSMessageId;
-}
+  | FinishResponse;
