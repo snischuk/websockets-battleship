@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws';
 import * as Types from '../types/types';
 import { WSPlayerAdapter } from '../adapters/wsPlayerAdapter';
+import { WSRoomAdapter } from '../adapters/wsRoomAdapter';
 
 export const ActionByType = {
   REG: 'reg',
@@ -20,14 +21,14 @@ export type ActionByType = (typeof ActionByType)[keyof typeof ActionByType];
 //   return typeof d['name'] === 'string' && typeof d['password'] === 'string';
 // };
 
-const isCreateRoomData = (
-  data: unknown,
-): data is Types.CreateRoomRequest['data'] => data === '';
+// const isCreateRoomData = (
+//   data: unknown,
+// ): data is Types.CreateRoomRequest['data'] => data === '';
 
-const isAddUserToRoomData = (
-  data: unknown,
-): data is Types.AddUserToRoomRequest['data'] =>
-  typeof data === 'object' && data !== null && 'indexRoom' in data;
+// const isAddUserToRoomData = (
+//   data: unknown,
+// ): data is Types.AddUserToRoomRequest['data'] =>
+//   typeof data === 'object' && data !== null && 'indexRoom' in data;
 
 const isAddShipsData = (data: unknown): data is Types.AddShipsRequest['data'] =>
   typeof data === 'object' &&
@@ -57,6 +58,7 @@ export const routeMessagesByActionType = (
   ws: WebSocket,
 ) => {
   const wsPlayerAdapter = new WSPlayerAdapter(ws);
+  const wsRoomAdapter = new WSRoomAdapter(ws);
 
   switch (msg.type) {
     case ActionByType.REG:
@@ -66,21 +68,17 @@ export const routeMessagesByActionType = (
       break;
 
     case ActionByType.CREATE_ROOM:
-      if (isCreateRoomData(msg.data)) {
-        const typedMsg: Types.BaseRequest<Types.CreateRoomRequest['data']> = {
-          ...msg,
-          data: msg.data,
-        };
-        handleCreateRoom(typedMsg);
-      }
+      wsRoomAdapter.handleCreateRoom(
+        msg as Types.BaseRequest<Types.CreateRoomRequest['data']>,
+      );
       break;
 
     case ActionByType.ADD_USER_TO_ROOM:
-      if (isAddUserToRoomData(msg.data)) {
-        const typedMsg: Types.BaseRequest<Types.AddUserToRoomRequest['data']> =
-          { ...msg, data: msg.data };
-        handleAddUserToRoom(typedMsg);
-      }
+      // if (isAddUserToRoomData(msg.data)) {
+      //   const typedMsg: Types.BaseRequest<Types.AddUserToRoomRequest['data']> =
+      //     { ...msg, data: msg.data };
+      //   handleAddUserToRoom(typedMsg);
+      // }
       break;
 
     case ActionByType.ADD_SHIPS:
@@ -122,17 +120,17 @@ export const routeMessagesByActionType = (
 //   console.log('👤 Handling registration:', msg.data);
 // };
 
-const handleCreateRoom = (
-  msg: Types.BaseRequest<Types.CreateRoomRequest['data']>,
-) => {
-  console.log('🏠 Handling create room:', msg.data);
-};
+// const handleCreateRoom = (
+//   msg: Types.BaseRequest<Types.CreateRoomRequest['data']>,
+// ) => {
+//   console.log('🏠 Handling create room:', msg.data);
+// };
 
-const handleAddUserToRoom = (
-  msg: Types.BaseRequest<Types.AddUserToRoomRequest['data']>,
-) => {
-  console.log('➕ Handling add user to room:', msg.data);
-};
+// const handleAddUserToRoom = (
+//   msg: Types.BaseRequest<Types.AddUserToRoomRequest['data']>,
+// ) => {
+//   console.log('➕ Handling add user to room:', msg.data);
+// };
 
 const handleAddShips = (
   msg: Types.BaseRequest<Types.AddShipsRequest['data']>,
