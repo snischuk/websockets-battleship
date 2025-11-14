@@ -1,17 +1,17 @@
 import type { RawData } from 'ws';
-import type { BaseRequest } from '../types/types';
+import type { WSRequest } from '../types/types';
 import { convertRawDataToString } from './convertWSRawDataToString';
+import { isObject } from './isObject';
+import { isWSRequest } from './schemaValidator';
 
 const deepParse = (value: unknown): unknown => {
   if (typeof value === 'string') {
     const trimmed = value.trim();
-
     if (!trimmed) return value;
 
     if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
       try {
-        const parsed = JSON.parse(trimmed);
-        return deepParse(parsed);
+        return deepParse(JSON.parse(trimmed));
       } catch {
         return value;
       }
@@ -29,11 +29,13 @@ const deepParse = (value: unknown): unknown => {
 
   if (Array.isArray(value)) {
     return value.map(deepParse);
-  } else if (value && typeof value === 'object') {
+  }
+
+  if (isObject(value)) {
     const result: Record<string, unknown> = {};
     for (const key in value) {
-      if (Object.prototype.hasOwnProperty.call(value, key)) {
-        result[key] = deepParse((value as Record<string, unknown>)[key]);
+      if (Object.hasOwn(value, key)) {
+        result[key] = deepParse(value[key]);
       }
     }
     return result;
@@ -42,18 +44,21 @@ const deepParse = (value: unknown): unknown => {
   return value;
 };
 
-export const parseMessage = <T = unknown>(
-  wsRawMessage: RawData,
-): BaseRequest<T> | undefined => {
+export const parseMessage = (wsRawMessage: RawData): WSRequest | undefined => {
   try {
     const messageString = convertRawDataToString(wsRawMessage);
-    const parsedMessage = JSON.parse(messageString) as BaseRequest<unknown>;
+    const raw = JSON.parse(messageString);
 
-    parsedMessage.data = deepParse(parsedMessage.data);
+    const normalized = deepParse(raw);
 
-    return parsedMessage as BaseRequest<T>;
+    if (!isWSRequest(normalized)) {
+      console.warn('⚠️ WS message is not a valid WSRequest:', normalized);
+      return undefined;
+    }
+
+    return normalized;
   } catch (err) {
-    console.error('⚠️ Failed to parse message:', err);
+    console.error('⚠️ Failed to parse WS message:', err);
     return undefined;
   }
 };
