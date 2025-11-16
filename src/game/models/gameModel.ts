@@ -82,7 +82,6 @@ export class GameModel {
     return {
       result: status,
       shooterId: playerId,
-      nextPlayerId,
       surroundingCells,
     };
   }
@@ -91,6 +90,14 @@ export class GameModel {
     const x = Math.floor(Math.random() * 10);
     const y = Math.floor(Math.random() * 10);
     return this.attack(playerId, x, y);
+  }
+
+  getWinner(): string | null {
+    if (this.player1.serverShips.every((ship) => ship.isSunk))
+      return this.player2.idPlayer;
+    if (this.player2.serverShips.every((ship) => ship.isSunk))
+      return this.player1.idPlayer;
+    return null;
   }
 }
 

@@ -9,6 +9,7 @@ import { WSRoomAdapter } from './wsRoomAdapter';
 
 export class WSPlayerAdapter {
   private ws: WebSocket;
+
   static wsToPlayerMap = new Map<WebSocket, PlayerModel>();
   static playerIdToWSMap = new Map<string, WebSocket>();
 
@@ -55,6 +56,7 @@ export class WSPlayerAdapter {
 
     WSRoomAdapter.broadcastUpdateRoom();
 
+    // Можно раскомментировать для обновления таблицы победителей
     // WSPlayerAdapter.broadcastToAll(ActionByType.UPDATE_WINNERS, PlayerController.getWinners());
   }
 

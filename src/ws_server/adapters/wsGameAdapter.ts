@@ -68,18 +68,48 @@ export class WSGameAdapter {
     }
 
     try {
-      const attackMessages = GameController.handleAttack(
+      const attackResult = GameController.handleAttack(
         String(gameId),
         String(indexPlayer),
         x,
         y,
       );
 
-      attackMessages.forEach((msgData) => {
-        WSPlayerAdapter.broadcastToAll(ActionByType.ATTACK, msgData);
+      WSPlayerAdapter.broadcastToAll(ActionByType.ATTACK, {
+        position: attackResult.position,
+        status: attackResult.status,
+        currentPlayer: attackResult.currentPlayer,
+        id: 0,
       });
 
-      this.broadcastTurn(game);
+      if (attackResult.surroundingCells?.length) {
+        attackResult.surroundingCells.forEach(
+          (cell: { x: number; y: number }) => {
+            WSPlayerAdapter.broadcastToAll(ActionByType.ATTACK, {
+              position: cell,
+              status: 'miss',
+              currentPlayer: attackResult.currentPlayer,
+              id: 0,
+            });
+          },
+        );
+      }
+
+      if (attackResult.winnerId) {
+        [game.player1, game.player2].forEach((player) => {
+          const ws = WSPlayerAdapter.getWSByPlayerId(player.idPlayer);
+          if (!ws) return;
+
+          WSPlayerAdapter.sendMessage(
+            ws,
+            'finish',
+            { winPlayer: attackResult.winnerId },
+            0,
+          );
+        });
+      } else {
+        this.broadcastTurn(game);
+      }
     } catch (err: unknown) {
       this.sendError(ActionByType.ATTACK, (err as Error).message, msg.id);
     }
@@ -103,16 +133,46 @@ export class WSGameAdapter {
     }
 
     try {
-      const attackMessages = GameController.handleRandomAttack(
+      const attackResult = GameController.handleRandomAttack(
         String(gameId),
         String(indexPlayer),
       );
 
-      attackMessages.forEach((msgData) => {
-        WSPlayerAdapter.broadcastToAll(ActionByType.ATTACK, msgData);
+      WSPlayerAdapter.broadcastToAll(ActionByType.ATTACK, {
+        position: attackResult.position,
+        status: attackResult.status,
+        currentPlayer: attackResult.currentPlayer,
+        id: 0,
       });
 
-      this.broadcastTurn(game);
+      if (attackResult.surroundingCells?.length) {
+        attackResult.surroundingCells.forEach(
+          (cell: { x: number; y: number }) => {
+            WSPlayerAdapter.broadcastToAll(ActionByType.ATTACK, {
+              position: cell,
+              status: 'miss',
+              currentPlayer: attackResult.currentPlayer,
+              id: 0,
+            });
+          },
+        );
+      }
+
+      if (attackResult.winnerId) {
+        [game.player1, game.player2].forEach((player) => {
+          const ws = WSPlayerAdapter.getWSByPlayerId(player.idPlayer);
+          if (!ws) return;
+
+          WSPlayerAdapter.sendMessage(
+            ws,
+            'finish',
+            { winPlayer: attackResult.winnerId },
+            0,
+          );
+        });
+      } else {
+        this.broadcastTurn(game);
+      }
     } catch (err: unknown) {
       this.sendError(
         ActionByType.RANDOM_ATTACK,
@@ -127,15 +187,10 @@ export class WSGameAdapter {
       const ws = WSPlayerAdapter.getWSByPlayerId(player.idPlayer);
       if (!ws) return;
 
-      this.sendMessage(
-        ws,
-        ActionByType.START_GAME,
-        {
-          ships: player.ships,
-          currentPlayerIndex: player.idPlayer,
-        },
-        0,
-      );
+      this.sendMessage(ws, ActionByType.START_GAME, {
+        ships: player.ships,
+        currentPlayerIndex: player.idPlayer,
+      });
     });
   }
 
@@ -144,15 +199,15 @@ export class WSGameAdapter {
     [game.player1, game.player2].forEach((player) => {
       const ws = WSPlayerAdapter.getWSByPlayerId(player.idPlayer);
       if (!ws) return;
-      this.sendMessage(ws, 'turn', data, 0);
+      this.sendMessage(ws, 'turn', data);
     });
   }
 
   private sendError(type: string, errorText: string, id: number) {
-    this.sendMessage(this.ws, type, { error: true, errorText }, id);
+    this.sendMessage(this.ws, type, { error: true, errorText, id });
   }
 
-  private sendMessage(ws: WebSocket, type: string, data: unknown, id: number) {
-    ws.send(JSON.stringify({ type, data: JSON.stringify(data), id }));
+  private sendMessage(ws: WebSocket, type: string, data: unknown) {
+    ws.send(JSON.stringify({ type, data, id: 0 }));
   }
 }

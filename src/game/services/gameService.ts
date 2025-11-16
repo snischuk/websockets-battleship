@@ -1,5 +1,6 @@
-import { GameModel, Ship } from '../models/gameModel';
+import { GameModel } from '../models/gameModel';
 import { PlayerModel } from '../models/playerModel';
+import { Ship } from '../models/gameModel';
 import { randomUUID } from 'node:crypto';
 
 export class GameService {
@@ -37,40 +38,44 @@ export class GameService {
     return game;
   }
 
-  handleAttack(gameId: string, playerId: string, x: number, y: number) {
+  handleAttack(
+    gameId: string,
+    playerId: string,
+    x: number,
+    y: number,
+  ): {
+    position: { x: number; y: number };
+    status: 'miss' | 'shot' | 'killed';
+    currentPlayer: string;
+    surroundingCells: { x: number; y: number }[];
+    winnerId: string | null;
+  } {
     const game = this.games.get(gameId);
     if (!game) throw new Error('Game not found');
 
     const attackResult = game.attack(playerId, x, y);
 
-    const messages = [
-      {
-        position: { x, y },
-        status: attackResult.result,
-        currentPlayer: attackResult.shooterId,
-      },
-    ];
-
-    if (attackResult.surroundingCells?.length) {
-      attackResult.surroundingCells.forEach((cell) => {
-        messages.push({
-          position: cell,
-          status: 'miss',
-          currentPlayer: attackResult.shooterId,
-        });
-      });
-    }
-
-    return messages;
+    return {
+      position: { x, y },
+      status: attackResult.result,
+      currentPlayer: attackResult.shooterId,
+      surroundingCells: attackResult.surroundingCells,
+      winnerId: game.getWinner(),
+    };
   }
 
-  handleRandomAttack(gameId: string, playerId: string) {
-    const game = this.games.get(gameId);
-    if (!game) throw new Error('Game not found');
-
+  handleRandomAttack(
+    gameId: string,
+    playerId: string,
+  ): {
+    position: { x: number; y: number };
+    status: 'miss' | 'shot' | 'killed';
+    currentPlayer: string;
+    surroundingCells: { x: number; y: number }[];
+    winnerId: string | null;
+  } {
     const x = Math.floor(Math.random() * 10);
     const y = Math.floor(Math.random() * 10);
-
     return this.handleAttack(gameId, playerId, x, y);
   }
 }
