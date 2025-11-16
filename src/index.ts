@@ -12,3 +12,22 @@ httpServer.listen(PORT, () => {
     `WS server started on the same port. Connected clients: ${wsServer.clients.size}`,
   );
 });
+
+process.on('SIGINT', () => {
+  console.log('\n💀 SIGINT received. Shutting down servers...');
+
+  wsServer.clients.forEach((client) => {
+    try {
+      client.close(1001, 'Server shutting down');
+    } catch (err) {}
+  });
+
+  wsServer.close(() => {
+    console.log('WS server closed');
+  });
+
+  httpServer.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
+  });
+});
