@@ -1,7 +1,7 @@
 import type { WebSocket } from 'ws';
 import { RoomController } from '../../game/controllers/roomController';
 import { RoomModel } from '../../game/models/roomModel';
-import { ShipModel } from '../../game/models/shipModel';
+
 import {
   AddShipsRequest,
   AddUserToRoomRequest,
@@ -14,6 +14,7 @@ import {
   isAddShipsRequestData,
 } from '../helpers/schemaValidator';
 import { WSPlayerAdapter } from './wsPlayerAdapter';
+import { GameController } from '../../game/controllers/gameController';
 
 export class WSRoomAdapter {
   private ws?: WebSocket;
@@ -38,7 +39,6 @@ export class WSRoomAdapter {
 
     try {
       const room = await RoomController.handleCreateRoom(player);
-
       WSRoomAdapter.broadcastUpdateRoom();
 
       if (room.roomUsers.length === 2) this.sendCreateGame(room);
@@ -95,26 +95,43 @@ export class WSRoomAdapter {
     const { gameId, ships, indexPlayer } = msg.data;
 
     try {
-      const room = RoomController.roomService
-        .getRooms()
-        .find((r) => r.roomId === gameId);
-      if (!room) throw new Error('Room not found');
+      const game = GameController.getGame(String(gameId));
+      if (!game) throw new Error('Game not found');
 
-      const player = room.roomUsers.find((p) => p.idPlayer === indexPlayer);
-      if (!player) throw new Error('Player not in room');
-
-      player.ships = ships.map(
-        (s) =>
-          new ShipModel(
-            { x: s.position.x, y: s.position.y },
-            s.direction,
-            s.length,
-            s.type,
-          ),
+      const player = [game.player1, game.player2].find(
+        (p) => p.idPlayer === indexPlayer,
       );
+      if (!player) throw new Error('Player not in game');
 
-      const allReady = room.roomUsers.every((p) => p.ships.length > 0);
-      if (allReady) this.sendStartGame(room);
+      GameController.saveShips(String(gameId), String(indexPlayer), ships);
+
+      if (game.hasBothPlayersReady()) {
+        const currentPlayer = GameController.handleStartGame(
+          String(gameId),
+        ).currentTurnPlayerId;
+
+        [game.player1, game.player2].forEach((p) => {
+          const ws = WSPlayerAdapter.getWSByPlayerId(p.idPlayer);
+          if (!ws) return;
+
+          WSPlayerAdapter.sendMessage(
+            ws,
+            ActionByType.START_GAME,
+            {
+              ships: p.ships,
+              currentPlayerIndex: currentPlayer,
+            },
+            0,
+          );
+
+          WSPlayerAdapter.sendMessage(
+            ws,
+            ActionByType.TURN,
+            { currentPlayer: currentPlayer },
+            0,
+          );
+        });
+      }
     } catch (err: unknown) {
       this.sendError(ActionByType.ADD_SHIPS, (err as Error).message, msg.id);
     }
@@ -136,6 +153,13 @@ export class WSRoomAdapter {
   }
 
   private sendCreateGame(room: RoomModel) {
+    const player1 = room.roomUsers[0];
+    const player2 = room.roomUsers[1];
+
+    if (!player1 || !player2) return;
+
+    const game = GameController.handleCreateGame(player1, player2, room.roomId);
+
     room.roomUsers.forEach((player) => {
       const ws = WSPlayerAdapter.getWSByPlayerId(player.idPlayer);
       if (!ws) return;
@@ -143,31 +167,7 @@ export class WSRoomAdapter {
       WSPlayerAdapter.sendMessage(
         ws,
         ActionByType.CREATE_GAME,
-        { idGame: room.roomId, idPlayer: player.idPlayer },
-        0,
-      );
-    });
-  }
-
-  private sendStartGame(room: RoomModel) {
-    const firstPlayerIndex = room.roomUsers[0]?.idPlayer;
-    if (!firstPlayerIndex) return;
-
-    room.roomUsers.forEach((player) => {
-      const ws = WSPlayerAdapter.getWSByPlayerId(player.idPlayer);
-      if (!ws) return;
-
-      WSPlayerAdapter.sendMessage(
-        ws,
-        ActionByType.START_GAME,
-        { ships: player.ships, currentPlayerIndex: firstPlayerIndex },
-        0,
-      );
-
-      WSPlayerAdapter.sendMessage(
-        ws,
-        ActionByType.TURN,
-        { currentPlayer: firstPlayerIndex },
+        { idGame: game.gameId, idPlayer: player.idPlayer },
         0,
       );
     });

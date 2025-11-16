@@ -158,3 +158,37 @@ export const isUpdateRoomResponseData = (
       ),
   );
 };
+
+export const isAttackData = (
+  data: unknown,
+): data is Types.AttackRequest['data'] => {
+  if (!isObject(data)) return false;
+  if (!hasKey(data, 'gameId')) return false;
+  if (typeof data.gameId !== 'string' && typeof data.gameId !== 'number')
+    return false;
+  if (!hasKey(data, 'x') || typeof data.x !== 'number') return false;
+  if (!hasKey(data, 'y') || typeof data.y !== 'number') return false;
+  if (!hasKey(data, 'indexPlayer')) return false;
+  if (
+    typeof data.indexPlayer !== 'string' &&
+    typeof data.indexPlayer !== 'number'
+  )
+    return false;
+  return true;
+};
+
+export const isRandomAttackData = (
+  data: unknown,
+): data is Types.RandomAttackRequest['data'] => {
+  if (!isObject(data)) return false;
+  if (!hasKey(data, 'gameId')) return false;
+  if (typeof data.gameId !== 'string' && typeof data.gameId !== 'number')
+    return false;
+  if (!hasKey(data, 'indexPlayer')) return false;
+  if (
+    typeof data.indexPlayer !== 'string' &&
+    typeof data.indexPlayer !== 'number'
+  )
+    return false;
+  return true;
+};

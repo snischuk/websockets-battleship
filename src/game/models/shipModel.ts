@@ -1,27 +1,46 @@
+export interface Ship {
+  position: { x: number; y: number };
+  length: number;
+  direction: boolean;
+  type: 'small' | 'medium' | 'large' | 'huge';
+}
+
 export class ShipModel {
-  public hits: { x: number; y: number }[] = [];
+  position: { x: number; y: number };
+  length: number;
+  direction: boolean;
+  type: 'small' | 'medium' | 'large' | 'huge';
+  hits: boolean[];
 
-  constructor(
-    public position: { x: number; y: number },
-    public direction: boolean,
-    public length: number,
-    public type: 'small' | 'medium' | 'large' | 'huge',
-  ) {}
-
-  hit(x: number, y: number) {
-    this.hits.push({ x, y });
+  constructor(ship: Ship) {
+    this.position = ship.position;
+    this.length = ship.length;
+    this.direction = ship.direction;
+    this.type = ship.type;
+    this.hits = Array(this.length).fill(false);
   }
 
-  isSunk() {
-    return this.hits.length >= this.length;
-  }
-
-  occupies(x: number, y: number) {
+  registerHit(x: number, y: number): boolean {
     for (let i = 0; i < this.length; i++) {
-      const cellX = this.position.x + (this.direction ? i : 0);
-      const cellY = this.position.y + (this.direction ? 0 : i);
-      if (cellX === x && cellY === y) return true;
+      const shipX = this.direction ? this.position.x : this.position.x + i;
+      const shipY = this.direction ? this.position.y + i : this.position.y;
+
+      if (x === shipX && y === shipY) {
+        this.hits[i] = true;
+        return true;
+      }
     }
     return false;
+  }
+
+  get isSunk(): boolean {
+    return this.hits.every((h) => h);
+  }
+
+  getCoordinates(): { x: number; y: number }[] {
+    return Array.from({ length: this.length }, (_, i) => ({
+      x: this.direction ? this.position.x : this.position.x + i,
+      y: this.direction ? this.position.y + i : this.position.y,
+    }));
   }
 }

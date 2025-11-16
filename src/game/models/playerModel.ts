@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ShipModel } from './shipModel';
+import { Ship, ShipModel } from './shipModel';
 
 export interface PlayerProps {
   name: string;
@@ -9,7 +9,8 @@ export interface PlayerProps {
 }
 
 export class PlayerModel {
-  public ships: ShipModel[] = [];
+  public ships: Ship[] = [];
+  public serverShips: ShipModel[] = [];
   public name: string;
   public password: string;
   public idPlayer: string;
