@@ -10,7 +10,7 @@ export const handleMessage = (
   const parsedMessage = parseMessage(wsRawMessage);
   if (!parsedMessage) return undefined;
 
-  console.log('⬅️ Received command:', parsedMessage);
+  console.log('⬅️ Client sent command:', parsedMessage);
 
   routeMessagesByActionType(parsedMessage, socket);
 

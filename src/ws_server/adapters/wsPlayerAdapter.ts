@@ -1,88 +1,76 @@
 import type { WebSocket } from 'ws';
 import { PlayerController } from '../../game/controllers/playerController';
 import { PlayerModel } from '../../game/models/playerModel';
-import { RoomController } from '../../game/controllers/roomController';
-import { isRegRequestData } from '../helpers/schemaValidator';
 import { RegRequest } from '../types/types';
 import { ActionByType } from '../constants/constants';
+import { randomUUID } from 'node:crypto';
+import { isRegRequestData } from '../helpers/schemaValidator';
+import { WSRoomAdapter } from './wsRoomAdapter';
 
 export class WSPlayerAdapter {
   private ws: WebSocket;
+  static wsToPlayerMap = new Map<WebSocket, PlayerModel>();
+  static playerIdToWSMap = new Map<string, WebSocket>();
 
   constructor(ws: WebSocket) {
     this.ws = ws;
   }
 
   async handleRegistration(msg: RegRequest) {
-    console.log('🟢 handleRegistration msg:', msg);
-
     if (!isRegRequestData(msg.data)) {
-      this.sendError(ActionByType.REG, 'Invalid registration data', msg.id);
-      return;
-    }
-
-    try {
-      const player = await PlayerController.handleRegistration(msg.data);
-      console.log('🟢 Registered player:', player);
-
-      RoomController.bindPlayerToWS(this.ws, player);
-
-      this.broadcastUpdateRoom();
-
-      this.sendRegistrationSuccess(player, msg.id);
-    } catch (err: unknown) {
-      console.error('❌ handleRegistration error:', err);
-      this.sendError(
+      return WSPlayerAdapter.sendMessage(
+        this.ws,
         ActionByType.REG,
-        err instanceof Error ? err.message : 'Unknown error',
+        { error: true, errorText: 'Invalid registration data' },
         msg.id,
       );
     }
-  }
-  private sendRegistrationSuccess(player: PlayerModel, id: number) {
-    const response = {
-      type: ActionByType.REG,
-      data: JSON.stringify({
+
+    const { name, password } = msg.data;
+    const playerId = randomUUID();
+
+    const player = new PlayerModel({
+      idPlayer: playerId,
+      name,
+      password,
+      points: 0,
+    });
+
+    WSPlayerAdapter.wsToPlayerMap.set(this.ws, player);
+    WSPlayerAdapter.playerIdToWSMap.set(playerId, this.ws);
+
+    PlayerController.handleRegistration(player);
+
+    WSPlayerAdapter.sendMessage(
+      this.ws,
+      ActionByType.REG,
+      {
         name: player.name,
-        index: player.id,
+        index: player.idPlayer,
         error: false,
         errorText: '',
-      }),
-      id,
-    };
-    console.log('➡️ Sending registration success:', response);
-    this.ws.send(JSON.stringify(response));
+      },
+      msg.id,
+    );
+
+    WSRoomAdapter.broadcastUpdateRoom();
+
+    // WSPlayerAdapter.broadcastToAll(ActionByType.UPDATE_WINNERS, PlayerController.getWinners());
   }
 
-  private sendError(type: string, errorText: string, id: number) {
-    const response = {
-      type,
-      data: JSON.stringify({
-        error: true,
-        errorText,
-      }),
-      id,
-    };
-    console.log('❌ Sending error:', response);
-    this.ws.send(JSON.stringify(response));
+  static getWSByPlayerId(id: string): WebSocket | undefined {
+    return this.playerIdToWSMap.get(id);
   }
 
-  private broadcastUpdateRoom() {
-    const rooms = RoomController.roomService.getRooms().map((r) => ({
-      roomId: r.roomId,
-      roomUsers: r.roomUsers.map((p) => ({ name: p.name, index: p.id })),
-    }));
+  static broadcastToAll(type: string, data: unknown) {
+    for (const ws of WSPlayerAdapter.wsToPlayerMap.keys()) {
+      WSPlayerAdapter.sendMessage(ws, type, data, 0);
+    }
+  }
 
-    console.log('🔄 Broadcasting update_room:', rooms);
-
-    RoomController.roomService.getAllWS().forEach((ws) => {
-      const response = {
-        type: ActionByType.UPDATE_ROOM,
-        data: JSON.stringify(rooms),
-        id: 0,
-      };
-      console.log('➡️ Sending to ws:', response);
-      ws.send(JSON.stringify(response));
-    });
+  static sendMessage(ws: WebSocket, type: string, data: unknown, id: number) {
+    const message = { type, data: JSON.stringify(data), id };
+    console.log(`➡️ Server sent command:`, message);
+    ws.send(JSON.stringify(message));
   }
 }

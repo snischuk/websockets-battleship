@@ -9,19 +9,17 @@ export class PlayerService {
   }
 
   async register(name: string, password: string): Promise<PlayerModel> {
-    const existing = await this.repo.findByName(name);
-    if (existing) {
-      throw new Error('Player already exists');
-    }
+    const isExist = await this.repo.findByName(name);
+    if (isExist) throw new Error('Player already exists');
 
-    const player = new PlayerModel(name, password);
+    const player = new PlayerModel({ name, password });
     await this.repo.savePlayer(player);
     return player;
   }
 
   async addPoints(playerId: string, points: number): Promise<void> {
     const allPlayers = await this.repo.getAll();
-    const player = allPlayers.find((p) => p.id === playerId);
+    const player = allPlayers.find((p) => p.idPlayer === playerId);
     if (!player) throw new Error('Player not found');
 
     player.points += points;
@@ -30,5 +28,12 @@ export class PlayerService {
 
   async getAll(): Promise<PlayerModel[]> {
     return this.repo.getAll();
+  }
+
+  async getLeaderboard(): Promise<{ name: string; wins: number }[]> {
+    const allPlayers = await this.repo.getAll();
+    return allPlayers
+      .map((p) => ({ name: p.name, wins: p.points }))
+      .sort((a, b) => b.wins - a.wins);
   }
 }

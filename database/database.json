@@ -1,9 +1,15 @@
 {
   "players": [
     {
-      "id": "ce12075f-3733-4ef7-b2e4-59370622b7a9",
-      "name": "jojojjojojojjojjo",
-      "password": "jojojojojjojjo",
+      "id": "315a0eea-a111-46dd-b8ce-0c329e222352",
+      "name": "qqqqqqwqw",
+      "password": "wqwwqqwqwwq",
+      "points": 0
+    },
+    {
+      "id": "e97f6f5e-b013-49ce-9e96-c33702fc92c0",
+      "name": "sasasasass",
+      "password": "assasasaas",
       "points": 0
     }
   ]

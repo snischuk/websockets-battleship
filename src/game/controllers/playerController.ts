@@ -6,9 +6,10 @@ export class PlayerController {
   private static playerService = new PlayerService();
 
   static async handleRegistration(data: RegRequestData): Promise<PlayerModel> {
-    console.log('👤 PlayerController: processing registration', data);
+    return this.playerService.register(data.name, data.password);
+  }
 
-    const player = await this.playerService.register(data.name, data.password);
-    return player;
+  static async handleLeaderboard(): Promise<{ name: string; wins: number }[]> {
+    return this.playerService.getLeaderboard();
   }
 }

@@ -1,11 +1,5 @@
 import type { WebSocket } from 'ws';
-import { PlayerModel } from '../../game/models/playerModel';
 import { RoomController } from '../../game/controllers/roomController';
-import {
-  isCreateRoomData,
-  isAddUserToRoomData,
-  isAddShipsRequestData,
-} from '../helpers/schemaValidator';
 import { RoomModel } from '../../game/models/roomModel';
 import { ShipModel } from '../../game/models/shipModel';
 import {
@@ -14,84 +8,88 @@ import {
   CreateRoomRequest,
 } from '../types/types';
 import { ActionByType } from '../constants/constants';
+import {
+  isCreateRoomData,
+  isAddUserToRoomData,
+  isAddShipsRequestData,
+} from '../helpers/schemaValidator';
+import { WSPlayerAdapter } from './wsPlayerAdapter';
 
 export class WSRoomAdapter {
-  private ws: WebSocket;
+  private ws?: WebSocket;
 
-  constructor(ws: WebSocket) {
+  constructor(ws?: WebSocket) {
     this.ws = ws;
   }
 
   async handleCreateRoom(msg: CreateRoomRequest) {
-    console.log('🏠 handleCreateRoom called with msg:', msg);
+    if (!isCreateRoomData(msg.data))
+      return this.sendError(ActionByType.CREATE_ROOM, 'Invalid data', msg.id);
+    if (!this.ws)
+      return this.sendError(ActionByType.CREATE_ROOM, 'WS not ready', msg.id);
 
-    if (!isCreateRoomData(msg.data)) {
-      this.sendError(
+    const player = WSPlayerAdapter.wsToPlayerMap.get(this.ws);
+    if (!player)
+      return this.sendError(
         ActionByType.CREATE_ROOM,
-        'Invalid create room data',
+        'Player not registered',
         msg.id,
       );
-      return;
-    }
 
     try {
-      const room = await RoomController.createRoom(this.ws);
+      const room = await RoomController.handleCreateRoom(player);
 
-      console.log('✅ Room created:', room);
-      this.broadcastUpdateRoom();
+      WSRoomAdapter.broadcastUpdateRoom();
 
-      if (room.roomUsers.length === 2) {
-        this.sendCreateGame(room);
-      }
+      if (room.roomUsers.length === 2) this.sendCreateGame(room);
     } catch (err: unknown) {
-      this.sendError(
-        ActionByType.CREATE_ROOM,
-        err instanceof Error ? err.message : 'Unknown error',
-        msg.id,
-      );
+      this.sendError(ActionByType.CREATE_ROOM, (err as Error).message, msg.id);
     }
   }
 
   async handleAddUserToRoom(msg: AddUserToRoomRequest) {
-    console.log('➕ handleAddUserToRoom called with msg:', msg);
-
-    if (!isAddUserToRoomData(msg.data)) {
-      this.sendError(
+    if (!isAddUserToRoomData(msg.data))
+      return this.sendError(
         ActionByType.ADD_USER_TO_ROOM,
-        'Invalid add user to room data',
+        'Invalid data',
         msg.id,
       );
-      return;
-    }
-
-    try {
-      const room = await RoomController.addUserToRoom(
-        this.ws,
-        msg.data.indexRoom,
+    if (!this.ws)
+      return this.sendError(
+        ActionByType.ADD_USER_TO_ROOM,
+        'WS not ready',
+        msg.id,
       );
 
-      console.log('✅ User added to room:', room);
-      this.broadcastUpdateRoom();
+    const player = WSPlayerAdapter.wsToPlayerMap.get(this.ws);
+    if (!player)
+      return this.sendError(
+        ActionByType.ADD_USER_TO_ROOM,
+        'Player not registered',
+        msg.id,
+      );
 
-      if (room.roomUsers.length === 2) {
-        this.sendCreateGame(room);
-      }
+    try {
+      const room = await RoomController.handleAddUserToRoom(
+        player,
+        String(msg.data.indexRoom),
+      );
+
+      WSRoomAdapter.broadcastUpdateRoom();
+
+      if (room.roomUsers.length === 2) this.sendCreateGame(room);
     } catch (err: unknown) {
       this.sendError(
         ActionByType.ADD_USER_TO_ROOM,
-        err instanceof Error ? err.message : 'Unknown error',
+        (err as Error).message,
         msg.id,
       );
     }
   }
 
   async handleAddShips(msg: AddShipsRequest) {
-    console.log('🚢 handleAddShips called with msg:', msg);
-
     if (!isAddShipsRequestData(msg.data)) {
-      console.log('❌ isAddShipsData failed for msg.data:', msg.data);
-      this.sendError('add_ships', 'Invalid add ships data', msg.id);
-      return;
+      return this.sendError(ActionByType.ADD_SHIPS, 'Invalid ships', msg.id);
     }
 
     const { gameId, ships, indexPlayer } = msg.data;
@@ -100,10 +98,10 @@ export class WSRoomAdapter {
       const room = RoomController.roomService
         .getRooms()
         .find((r) => r.roomId === gameId);
-      if (!room) throw new Error(`Room/game ${gameId} not found`);
+      if (!room) throw new Error('Room not found');
 
-      const player = room.roomUsers.find((p) => p.id === indexPlayer);
-      if (!player) throw new Error(`Player ${indexPlayer} not in room`);
+      const player = room.roomUsers.find((p) => p.idPlayer === indexPlayer);
+      if (!player) throw new Error('Player not in room');
 
       player.ships = ships.map(
         (s) =>
@@ -115,84 +113,68 @@ export class WSRoomAdapter {
           ),
       );
 
-      console.log(`✅ Ships added for player ${player.name}:`, ships);
-
-      const isAllShipsPlaced = room.roomUsers.every(
-        (p) => p.ships && p.ships.length > 0,
-      );
-      if (isAllShipsPlaced) {
-        console.log(
-          '▶️ All ships placed, starting game for room:',
-          room.roomId,
-        );
-        this.sendStartGame(room);
-      }
+      const allReady = room.roomUsers.every((p) => p.ships.length > 0);
+      if (allReady) this.sendStartGame(room);
     } catch (err: unknown) {
-      this.sendError(
-        ActionByType.ADD_SHIPS,
-        err instanceof Error ? err.message : 'Unknown error',
-        msg.id,
-      );
+      this.sendError(ActionByType.ADD_SHIPS, (err as Error).message, msg.id);
     }
   }
 
-  private broadcastUpdateRoom() {
-    const rooms = RoomController.roomService.getRooms().map((r) => ({
-      roomId: r.roomId,
-      roomUsers: r.roomUsers.map((p) => ({ name: p.name, index: p.id })),
-    }));
+  static broadcastUpdateRoom() {
+    const rooms = RoomController.roomService
+      .getRooms()
+      .filter((r) => r.roomUsers.length === 1)
+      .map((r) => ({
+        roomId: r.roomId,
+        roomUsers: r.roomUsers.map((p) => ({
+          name: p.name,
+          index: p.idPlayer,
+        })),
+      }));
 
-    console.log('🔄 Broadcasting update_room:', rooms);
-
-    RoomController.roomService.getAllWS().forEach((ws) => {
-      const response = {
-        type: ActionByType.UPDATE_ROOM,
-        data: JSON.stringify(rooms),
-        id: 0,
-      };
-      console.log('➡️ Sending to ws:', response);
-      ws.send(JSON.stringify(response));
-    });
+    WSPlayerAdapter.broadcastToAll(ActionByType.UPDATE_ROOM, rooms);
   }
 
   private sendCreateGame(room: RoomModel) {
-    const idGame = room.roomId;
-    room.roomUsers.forEach((p: PlayerModel) => {
-      const ws = RoomController.roomService.getWSByPlayer(p);
+    room.roomUsers.forEach((player) => {
+      const ws = WSPlayerAdapter.getWSByPlayerId(player.idPlayer);
       if (!ws) return;
 
-      const response = {
-        type: ActionByType.CREATE_GAME,
-        data: JSON.stringify({ idGame, idPlayer: p.id }),
-        id: 0,
-      };
-      console.log('➡️ Sending create_game to ws:', response);
-      ws.send(JSON.stringify(response));
+      WSPlayerAdapter.sendMessage(
+        ws,
+        ActionByType.CREATE_GAME,
+        { idGame: room.roomId, idPlayer: player.idPlayer },
+        0,
+      );
     });
   }
 
   private sendStartGame(room: RoomModel) {
-    room.roomUsers.forEach((p: PlayerModel) => {
-      const ws = RoomController.roomService.getWSByPlayer(p);
+    const firstPlayerIndex = room.roomUsers[0]?.idPlayer;
+    if (!firstPlayerIndex) return;
+
+    room.roomUsers.forEach((player) => {
+      const ws = WSPlayerAdapter.getWSByPlayerId(player.idPlayer);
       if (!ws) return;
 
-      const response = {
-        type: ActionByType.START_GAME,
-        data: JSON.stringify({ gameId: room.roomId }),
-        id: 0,
-      };
-      console.log('▶️ Sending start_game to ws:', response);
-      ws.send(JSON.stringify(response));
+      WSPlayerAdapter.sendMessage(
+        ws,
+        ActionByType.START_GAME,
+        { ships: player.ships, currentPlayerIndex: firstPlayerIndex },
+        0,
+      );
+
+      WSPlayerAdapter.sendMessage(
+        ws,
+        ActionByType.TURN,
+        { currentPlayer: firstPlayerIndex },
+        0,
+      );
     });
   }
 
   private sendError(type: string, errorText: string, id: number) {
-    const response = {
-      type,
-      data: JSON.stringify({ error: true, errorText }),
-      id,
-    };
-    console.log('❌ Sending error:', response);
-    this.ws.send(JSON.stringify(response));
+    if (!this.ws) return;
+    WSPlayerAdapter.sendMessage(this.ws, type, { error: true, errorText }, id);
   }
 }

@@ -34,7 +34,13 @@ export class PlayerRepository {
 
       const parsedDatabase: Database = JSON.parse(raw);
       this.players = parsedDatabase.players.map(
-        (p) => new PlayerModel(p.name, p.password, p.id, p.points),
+        (p) =>
+          new PlayerModel({
+            name: p.name,
+            password: p.password,
+            idPlayer: p.id,
+            points: p.points,
+          }),
       );
     } catch (err) {
       console.error('Failed to load players:', err);
@@ -45,7 +51,7 @@ export class PlayerRepository {
   private async save(): Promise<void> {
     const db: Database = {
       players: this.players.map((p) => ({
-        id: p.id,
+        id: p.idPlayer,
         name: p.name,
         password: p.password,
         points: p.points,
@@ -70,7 +76,7 @@ export class PlayerRepository {
   }
 
   async updatePlayer(player: PlayerModel): Promise<void> {
-    const index = this.players.findIndex((p) => p.id === player.id);
+    const index = this.players.findIndex((p) => p.idPlayer === player.idPlayer);
     if (index !== -1) {
       this.players[index] = player;
       await this.save();

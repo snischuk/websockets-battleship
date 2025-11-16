@@ -1,39 +1,33 @@
 import { PlayerModel } from './playerModel';
 
+export interface Ship {
+  position: { x: number; y: number };
+  direction: boolean;
+  length: number;
+  type: 'small' | 'medium' | 'large' | 'huge';
+}
+
 export class GameModel {
-  public currentPlayerIndex: number = 0;
-  public isFinished: boolean = false;
+  gameId: string;
+  player1: PlayerModel;
+  player2: PlayerModel;
+  ships: Map<string, Ship[]> = new Map();
+  currentTurnPlayerId: string | null | undefined = null;
 
-  constructor(
-    public id: string,
-    public players: PlayerModel[],
-  ) {}
-
-  attack(playerId: string, x: number, y: number): 'miss' | 'shot' | 'killed' {
-    const enemy = this.players.find((p) => p.id !== playerId);
-    if (!enemy) throw new Error('Enemy not found');
-
-    for (const ship of enemy.ships) {
-      if (ship.occupies(x, y)) {
-        ship.hit(x, y);
-        return ship.isSunk() ? 'killed' : 'shot';
-      }
-    }
-    return 'miss';
+  constructor(gameId: string, player1: PlayerModel, player2: PlayerModel) {
+    this.gameId = gameId;
+    this.player1 = player1;
+    this.player2 = player2;
   }
 
-  nextTurn() {
-    this.currentPlayerIndex =
-      (this.currentPlayerIndex + 1) % this.players.length;
+  setShips(playerId: string, ships: Ship[]) {
+    this.ships.set(playerId, ships);
   }
 
-  checkWinner(): PlayerModel | null {
-    for (const player of this.players) {
-      const allSunk = player.ships.every((ship) => ship.isSunk());
-      if (allSunk) {
-        return this.players.find((p) => p.id !== player.id) || null;
-      }
-    }
-    return null;
+  hasBothPlayersReady(): boolean {
+    return (
+      this.ships.has(this.player1.idPlayer) &&
+      this.ships.has(this.player2.idPlayer)
+    );
   }
 }
